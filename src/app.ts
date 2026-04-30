@@ -15,11 +15,13 @@ app.use(express.urlencoded({ extended: true }));
 import authRoutes from './routes/authRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import gadgetRoutes from './routes/gadgetRoutes';
+import userRoutes from './routes/userRoutes';
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/gadgets', gadgetRoutes);
+app.use('/api/users', userRoutes);
 
 // Basic Route
 app.get('/', (req: Request, res: Response) => {

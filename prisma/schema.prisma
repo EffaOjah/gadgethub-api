@@ -25,6 +25,11 @@ model User {
   role         Role     @default(USER)
   status       Status   @default(ACTIVE)
   avatar       String?
+  phoneNumber  String?
+  location     String?
+  bio          String?  @db.Text
+  techPresence String? // Links to GitHub, LinkedIn, or personal site
+  isVerified   Boolean  @default(false)
   joinDate     DateTime @default(now())
 
   reviews Review[]
