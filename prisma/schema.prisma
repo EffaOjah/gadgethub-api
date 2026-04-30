@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String? // Nullable for users who sign up via Google
+  googleId     String?  @unique
+  role         Role     @default(USER)
+  status       Status   @default(ACTIVE)
+  avatar       String?
+  joinDate     DateTime @default(now())
+
+  reviews Review[]
+}
+
+model Gadget {
+  id            String    @id @default(uuid())
+  name          String
+  categoryId    String
+  image         String
+  originalPrice Float?
+  discount      Int       @default(0)
+  description   String
+  specs         Json // Store key-value specs flexibly
+  badges        String[]
+  dealEndTime   DateTime?
+  shortSummary  String?
+  pros          String[]
+  cons          String[]
+
+  // Relations
+  category Category        @relation(fields: [categoryId], references: [id])
+  prices   NigerianPrices?
+  reviews  Review[]
+  sellers  SellerGadget[]
+}
+
+model NigerianPrices {
+  id       String @id @default(uuid())
+  gadgetId String @unique
+  jumia    Float?
+  konga    Float?
+  slot     Float?
+  average  Float?
+
+  gadget Gadget @relation(fields: [gadgetId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id       String   @id @default(uuid())
+  name     String   @unique
+  image    String
+  badges   String[]
+  discount Int?
+
+  gadgets Gadget[]
+}
+
+model Review {
+  id                 String   @id @default(uuid())
+  gadgetId           String
+  userId             String
+  rating             Int // 1 to 5
+  title              String?
+  comment            String
+  pros               String[]
+  cons               String[]
+  isVerifiedPurchase Boolean  @default(false)
+  helpfulCount       Int      @default(0)
+  image              String?
+  isFlagged          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  gadget Gadget @relation(fields: [gadgetId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Seller {
+  id          String   @id @default(uuid())
+  name        String
+  logo        String
+  location    String
+  city        String
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  isVerified  Boolean  @default(false)
+  specialty   String
+  memberSince DateTime @default(now())
+
+  gadgets SellerGadget[]
+}
+
+// Many-to-Many Join Table for Sellers and Gadgets
+model SellerGadget {
+  gadgetId String
+  sellerId String
+  price    Float
+
+  gadget Gadget @relation(fields: [gadgetId], references: [id])
+  seller Seller @relation(fields: [sellerId], references: [id])
+
+  @@id([gadgetId, sellerId])
+}
+
+model BlogPost {
+  id           String   @id @default(uuid())
+  title        String
+  excerpt      String
+  content      String   @db.Text
+  image        String
+  commentCount Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model AdminNotification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String // info, success, warning, error
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
