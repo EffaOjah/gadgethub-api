@@ -39,3 +39,36 @@ export const createCategory = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error creating category' });
   }
 };
+export const updateCategory = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const validatedData = createCategorySchema.parse(req.body);
+
+    const category = await prisma.category.update({
+      where: { id: String(id) },
+      data: {
+        name: validatedData.name,
+        image: validatedData.image,
+        badges: validatedData.badges || [],
+        discount: validatedData.discount,
+      }
+    });
+    res.json({ success: true, data: category });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, message: 'Invalid data', errors: error.format() });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Server error updating category' });
+  }
+};
+
+export const deleteCategory = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.category.delete({ where: { id: String(id) } });
+    res.json({ success: true, message: 'Category deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error deleting category' });
+  }
+};

@@ -138,15 +138,15 @@ import { z } from 'zod';
 
 const createGadgetSchema = z.object({
   name: z.string().min(2),
-  categoryId: z.string().uuid(),
+  categoryId: z.string(),
   image: z.string(),
-  originalPrice: z.number().positive().optional(),
+  originalPrice: z.number().min(0).optional().nullable(),
   discount: z.number().int().min(0).max(100).optional().default(0),
   description: z.string().min(10),
-  specs: z.record(z.string(), z.any()), // Validates JSON object structure
+  specs: z.record(z.string(), z.any()).optional().default({}),
   badges: z.array(z.string()).optional().default([]),
-  dealEndTime: z.string().datetime().optional(), // Accepts ISO datetime strings
-  shortSummary: z.string().optional(),
+  dealEndTime: z.string().datetime().optional().nullable(),
+  shortSummary: z.string().optional().nullable(),
   pros: z.array(z.string()).optional().default([]),
   cons: z.array(z.string()).optional().default([]),
 });
@@ -158,16 +158,51 @@ export const createGadget = async (req: Request, res: Response) => {
     const gadget = await prisma.gadget.create({
       data: {
         ...validatedData,
-        dealEndTime: validatedData.dealEndTime ? new Date(validatedData.dealEndTime) : undefined,
+        dealEndTime: validatedData.dealEndTime ? new Date(validatedData.dealEndTime) : (validatedData.dealEndTime === null ? null : undefined),
       } as any
     });
     res.status(201).json({ success: true, data: gadget });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log('Validation Error (Create):', JSON.stringify(error.format(), null, 2));
       res.status(400).json({ success: false, message: 'Invalid data', errors: error.format() });
       return;
     }
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error creating gadget' });
+  }
+};
+export const updateGadget = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const validatedData = createGadgetSchema.parse(req.body);
+
+    const gadget = await prisma.gadget.update({
+      where: { id: String(id) },
+      data: {
+        ...validatedData,
+        dealEndTime: validatedData.dealEndTime ? new Date(validatedData.dealEndTime) : (validatedData.dealEndTime === null ? null : undefined),
+      } as any
+    });
+    res.json({ success: true, data: gadget });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.log('Validation Error (Update):', JSON.stringify(error.format(), null, 2));
+      res.status(400).json({ success: false, message: 'Invalid data', errors: error.format() });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error updating gadget' });
+  }
+};
+
+export const deleteGadget = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.gadget.delete({ where: { id: String(id) } });
+    res.json({ success: true, message: 'Gadget deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error deleting gadget' });
   }
 };
