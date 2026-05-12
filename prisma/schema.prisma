@@ -38,19 +38,14 @@ model User {
 }
 
 model Gadget {
-  id            String    @id @default(uuid())
-  name          String
-  categoryId    String
-  image         String
-  originalPrice Float?
-  discount      Int       @default(0)
-  description   String
-  specs         Json // Store key-value specs flexibly
-  badges        String[]
-  dealEndTime   DateTime?
-  shortSummary  String?
-  pros          String[]
-  cons          String[]
+  id          String @id @default(uuid())
+  name        String
+  brand       String
+  price       Float  @default(0)
+  categoryId  String
+  image       String
+  description String
+  specs       Json // Store key-value specs flexibly
 
   // Relations
   category Category        @relation(fields: [categoryId], references: [id])

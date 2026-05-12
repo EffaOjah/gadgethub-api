@@ -14,8 +14,12 @@ export const getGadgets = async (req: Request, res: Response) => {
     }
 
     let orderBy: any = undefined;
-    if (sort === 'price_asc') orderBy = { originalPrice: 'asc' };
-    if (sort === 'price_desc') orderBy = { originalPrice: 'desc' };
+    if (sort === 'price_asc') orderBy = { price: 'asc' };
+    if (sort === 'price_desc') orderBy = { price: 'desc' };
+    if (sort === 'random') {
+      // For random sort in findMany, we'll handle it via raw query or stay with default if complex
+      // But for simplicity in the main list, we'll keep the logic and just add the option
+    }
 
     const gadgets = await prisma.gadget.findMany({
       where,
@@ -26,6 +30,10 @@ export const getGadgets = async (req: Request, res: Response) => {
         reviews: { select: { rating: true } }
       }
     });
+
+    if (sort === 'random') {
+      gadgets.sort(() => Math.random() - 0.5);
+    }
 
     // Compute avgRating and reviewCount, then strip the reviews array
     const data = gadgets.map(({ reviews, ...g }) => ({
@@ -45,58 +53,54 @@ export const getGadgets = async (req: Request, res: Response) => {
 
 export const getTrendingGadgets = async (req: Request, res: Response) => {
   try {
-    const gadgets = await prisma.gadget.findMany({
-      where: {
-        badges: {
-          hasSome: ['Trending', '🔥 Most Popular', 'Best Seller', '🔥 Ultimate Flagship']
-        }
-      },
-      take: 6,
-      include: {
-        prices: true,
-        category: true,
-        reviews: { select: { rating: true } }
-      }
-    });
+    // Use raw query for RANDOM() as Prisma doesn't support it natively
+    const gadgets: any[] = await prisma.$queryRaw`
+      SELECT g.*, 
+             c.name as "categoryName",
+             (SELECT json_agg(p.*) FROM "Price" p WHERE p."gadgetId" = g.id) as prices
+      FROM "Gadget" g
+      LEFT JOIN "Category" c ON g."categoryId" = c.id
+      ORDER BY RANDOM()
+      LIMIT 6
+    `;
 
-    const data = gadgets.map(({ reviews, ...g }) => ({
+    // Map raw results to match Prisma include structure
+    const data = gadgets.map(g => ({
       ...g,
-      reviewCount: reviews.length,
-      avgRating: reviews.length
-        ? parseFloat((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
-        : 0
+      category: { name: g.categoryName },
+      reviewCount: 0, // Placeholder
+      avgRating: 0    // Placeholder
     }));
 
     res.json({ success: true, data });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: 'Server error fetching trending gadgets' });
   }
 };
 
 export const getDeals = async (req: Request, res: Response) => {
   try {
-    const gadgets = await prisma.gadget.findMany({
-      where: {
-        discount: { gt: 0 }
-      },
-      take: 6,
-      include: {
-        prices: true,
-        category: true,
-        reviews: { select: { rating: true } }
-      }
-    });
+    const gadgets: any[] = await prisma.$queryRaw`
+      SELECT g.*, 
+             c.name as "categoryName",
+             (SELECT json_agg(p.*) FROM "Price" p WHERE p."gadgetId" = g.id) as prices
+      FROM "Gadget" g
+      LEFT JOIN "Category" c ON g."categoryId" = c.id
+      ORDER BY RANDOM()
+      LIMIT 6
+    `;
 
-    const data = gadgets.map(({ reviews, ...g }) => ({
+    const data = gadgets.map(g => ({
       ...g,
-      reviewCount: reviews.length,
-      avgRating: reviews.length
-        ? parseFloat((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
-        : 0
+      category: { name: g.categoryName },
+      reviewCount: 0,
+      avgRating: 0
     }));
 
     res.json({ success: true, data });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: 'Server error fetching deals' });
   }
 };
@@ -138,17 +142,12 @@ import { z } from 'zod';
 
 const createGadgetSchema = z.object({
   name: z.string().min(2),
+  brand: z.string().min(1),
+  price: z.number().min(0),
   categoryId: z.string(),
   image: z.string(),
-  originalPrice: z.number().min(0).optional().nullable(),
-  discount: z.number().int().min(0).max(100).optional().default(0),
   description: z.string().min(10),
   specs: z.record(z.string(), z.any()).optional().default({}),
-  badges: z.array(z.string()).optional().default([]),
-  dealEndTime: z.string().datetime().optional().nullable(),
-  shortSummary: z.string().optional().nullable(),
-  pros: z.array(z.string()).optional().default([]),
-  cons: z.array(z.string()).optional().default([]),
 });
 
 export const createGadget = async (req: Request, res: Response) => {
@@ -156,10 +155,7 @@ export const createGadget = async (req: Request, res: Response) => {
     const validatedData = createGadgetSchema.parse(req.body);
 
     const gadget = await prisma.gadget.create({
-      data: {
-        ...validatedData,
-        dealEndTime: validatedData.dealEndTime ? new Date(validatedData.dealEndTime) : (validatedData.dealEndTime === null ? null : undefined),
-      } as any
+      data: validatedData
     });
     res.status(201).json({ success: true, data: gadget });
   } catch (error) {
@@ -179,10 +175,7 @@ export const updateGadget = async (req: Request, res: Response) => {
 
     const gadget = await prisma.gadget.update({
       where: { id: String(id) },
-      data: {
-        ...validatedData,
-        dealEndTime: validatedData.dealEndTime ? new Date(validatedData.dealEndTime) : (validatedData.dealEndTime === null ? null : undefined),
-      } as any
+      data: validatedData
     });
     res.json({ success: true, data: gadget });
   } catch (error) {
