@@ -57,19 +57,21 @@ export const getTrendingGadgets = async (req: Request, res: Response) => {
     const gadgets: any[] = await prisma.$queryRaw`
       SELECT g.*, 
              c.name as "categoryName",
-             (SELECT json_agg(p.*) FROM "Price" p WHERE p."gadgetId" = g.id) as prices
+             (SELECT json_agg(p.*) FROM "Price" p WHERE p."gadgetId" = g.id) as prices,
+             CAST(COUNT(r.id) AS INTEGER) as "reviewCount",
+             CAST(COALESCE(AVG(r.rating), 0) AS FLOAT) as "avgRating"
       FROM "Gadget" g
       LEFT JOIN "Category" c ON g."categoryId" = c.id
-      ORDER BY RANDOM()
+      LEFT JOIN "Review" r ON r."gadgetId" = g.id
+      GROUP BY g.id, c.name
+      ORDER BY "reviewCount" DESC, "avgRating" DESC, RANDOM()
       LIMIT 6
     `;
 
     // Map raw results to match Prisma include structure
     const data = gadgets.map(g => ({
       ...g,
-      category: { name: g.categoryName },
-      reviewCount: 0, // Placeholder
-      avgRating: 0    // Placeholder
+      category: { name: g.categoryName }
     }));
 
     res.json({ success: true, data });

@@ -89,6 +89,7 @@ model Review {
   image              String?
   isFlagged          Boolean  @default(false)
   createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
 
   gadget Gadget @relation(fields: [gadgetId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
