@@ -57,7 +57,7 @@ export const getTrendingGadgets = async (req: Request, res: Response) => {
     const gadgets: any[] = await prisma.$queryRaw`
       SELECT g.*, 
              c.name as "categoryName",
-             (SELECT json_agg(p.*) FROM "Price" p WHERE p."gadgetId" = g.id) as prices,
+             (SELECT json_agg(p.*) FROM "NigerianPrices" p WHERE p."gadgetId" = g.id) as prices,
              CAST(COUNT(r.id) AS INTEGER) as "reviewCount",
              CAST(COALESCE(AVG(r.rating), 0) AS FLOAT) as "avgRating"
       FROM "Gadget" g
@@ -109,8 +109,14 @@ export const getDeals = async (req: Request, res: Response) => {
 
 export const getGadgetById = async (req: Request, res: Response) => {
   try {
-    const gadget = await prisma.gadget.findUnique({
-      where: { id: String(req.params.id) },
+    const param = String(req.params.id);
+    const gadget = await prisma.gadget.findFirst({
+      where: {
+        OR: [
+          { id: param },
+          { slug: param }
+        ]
+      },
       include: {
         prices: true,
         category: true,
@@ -152,12 +158,26 @@ const createGadgetSchema = z.object({
   specs: z.record(z.string(), z.any()).optional().default({}),
 });
 
+const generateSlug = async (name: string, excludeId?: string): Promise<string> => {
+  let baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  let slug = baseSlug;
+  let counter = 1;
+  while (true) {
+    const existing = await prisma.gadget.findUnique({ where: { slug } });
+    if (!existing || (excludeId && existing.id === excludeId)) break;
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+  return slug;
+};
+
 export const createGadget = async (req: Request, res: Response) => {
   try {
     const validatedData = createGadgetSchema.parse(req.body);
+    const slug = await generateSlug(validatedData.name);
 
     const gadget = await prisma.gadget.create({
-      data: validatedData
+      data: { ...validatedData, slug }
     });
     res.status(201).json({ success: true, data: gadget });
   } catch (error) {
@@ -174,10 +194,11 @@ export const updateGadget = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const validatedData = createGadgetSchema.parse(req.body);
+    const slug = await generateSlug(validatedData.name, String(id));
 
     const gadget = await prisma.gadget.update({
       where: { id: String(id) },
-      data: validatedData
+      data: { ...validatedData, slug }
     });
     res.json({ success: true, data: gadget });
   } catch (error) {

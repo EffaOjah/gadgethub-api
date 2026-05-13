@@ -147,3 +147,52 @@ export const markReviewHelpful = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Server error updating review' });
   }
 };
+
+export const getAllReviews = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 8;
+    const category = req.query.category as string;
+    
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (category && category !== 'All Reviews') {
+      where.gadget = {
+        category: {
+          name: { equals: category, mode: 'insensitive' }
+        }
+      };
+    }
+
+    const [reviews, totalCount] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true, avatar: true } },
+          gadget: { select: { id: true, name: true, image: true, slug: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.review.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.json({
+      success: true,
+      data: reviews,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalCount,
+        itemsPerPage: limit
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all reviews:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching reviews' });
+  }
+};

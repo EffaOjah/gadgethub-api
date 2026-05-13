@@ -1,10 +1,11 @@
 import express from 'express';
-import { createReview, getGadgetReviews, markReviewHelpful, updateReview } from '../controllers/reviewController';
+import { createReview, getGadgetReviews, markReviewHelpful, updateReview, getAllReviews } from '../controllers/reviewController';
 import { protect } from '../middlewares/authMiddleware';
 
 const router = express.Router();
 
 // Public routes
+router.get('/', getAllReviews);
 router.get('/gadget/:gadgetId', getGadgetReviews);
 
 // Protected routes

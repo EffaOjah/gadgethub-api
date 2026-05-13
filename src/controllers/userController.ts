@@ -108,6 +108,7 @@ export const getUserReviews = async (req: Request, res: Response) => {
         gadget: {
           select: {
             id: true,
+            slug: true,
             name: true,
             image: true,
           },
@@ -148,6 +149,7 @@ export const getPublicProfile = async (req: Request, res: Response) => {
             gadget: {
               select: {
                 id: true,
+                slug: true,
                 name: true,
                 image: true,
               },
@@ -166,5 +168,36 @@ export const getPublicProfile = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching public profile:', error);
     res.status(500).json({ success: false, message: 'Server error fetching user details' });
+  }
+};
+
+/**
+ * @desc    Upload user avatar
+ * @route   POST /api/users/avatar
+ * @access  Private
+ */
+export const uploadAvatar = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload an image' });
+    }
+
+    const avatarPath = `/uploads/${req.file.filename}`;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarPath },
+      select: { id: true, name: true, avatar: true }
+    });
+
+    res.json({ success: true, data: user, message: 'Avatar updated successfully' });
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
+    res.status(500).json({ success: false, message: 'Server error uploading avatar' });
   }
 };
