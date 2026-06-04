@@ -5,7 +5,10 @@ import { upload } from '../middlewares/uploadMiddleware';
 
 const router = express.Router();
 
-// Only admins can upload for now (to avoid abuse)
+// General Admin upload
 router.post('/', protect, admin, upload.single('image'), uploadSingle);
+
+// Seller product image upload
+router.post('/product', protect, upload.single('image'), uploadSingle);
 
 export default router;

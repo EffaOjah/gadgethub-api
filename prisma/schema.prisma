@@ -17,6 +17,11 @@ enum Status {
   SUSPENDED
 }
 
+enum PriceBadge {
+  NEGOTIABLE
+  NON_NEGOTIABLE
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -52,7 +57,6 @@ model Gadget {
   category Category        @relation(fields: [categoryId], references: [id])
   prices   NigerianPrices?
   reviews  Review[]
-  sellers  SellerGadget[]
 }
 
 model NigerianPrices {
@@ -101,6 +105,8 @@ model Seller {
   userId      String   @unique
   name        String
   logo        String
+  about       String?  @db.Text
+  phoneNumber String?
   location    String
   city        String
   rating      Float    @default(0)
@@ -113,16 +119,19 @@ model Seller {
   gadgets SellerGadget[]
 }
 
-// Many-to-Many Join Table for Sellers and Gadgets
 model SellerGadget {
-  gadgetId String
-  sellerId String
-  price    Float
+  id          String     @id @default(uuid())
+  sellerId    String
+  description String     @db.Text
+  specs       Json       @default("{}")
+  images      String[]
+  views       Int        @default(0)
+  price       Float
+  priceBadge  PriceBadge @default(NON_NEGOTIABLE)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
 
-  gadget Gadget @relation(fields: [gadgetId], references: [id])
   seller Seller @relation(fields: [sellerId], references: [id])
-
-  @@id([gadgetId, sellerId])
 }
 
 model BlogPost {

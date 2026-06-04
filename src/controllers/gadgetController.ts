@@ -124,8 +124,7 @@ export const getGadgetById = async (req: Request, res: Response) => {
           include: {
             user: { select: { id: true, name: true, avatar: true } }
           }
-        },
-        sellers: true
+        }
       }
     });
 
