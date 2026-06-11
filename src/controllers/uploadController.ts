@@ -6,15 +6,15 @@ export const uploadSingle = (req: Request, res: Response) => {
     return;
   }
 
-  // Return relative path. Frontend will prepend the base URL if needed.
-  const relativeUrl = `/uploads/${req.file.filename}`;
+  // Cloudinary storage provides the full URL in req.file.path
+  const cloudinaryUrl = req.file.path;
 
   res.json({
     success: true,
     message: 'File uploaded successfully',
     data: {
-      url: relativeUrl,
-      fullUrl: `${req.protocol}://${req.get('host')}${relativeUrl}`,
+      url: cloudinaryUrl,
+      fullUrl: cloudinaryUrl, // For backwards compatibility if frontend uses fullUrl
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size
